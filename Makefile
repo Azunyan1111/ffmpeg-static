@@ -125,7 +125,7 @@ build-openssl-3-static: download-openssl
 		mkdir -p build-ffmpeg && \
 		cp -r download/$(OPENSSL_SRC) build-ffmpeg/$(OPENSSL_SRC) && \
 		cd build-ffmpeg/$(OPENSSL_SRC) && \
-			./Configure $(OPENSSL_TARGET) no-shared no-dso no-tests --prefix=$(OPENSSL_PREFIX) && \
+			./Configure $(OPENSSL_TARGET) no-shared no-dso no-tests --prefix=$(OPENSSL_PREFIX) --libdir=lib && \
 			make -j$(NPROC) && \
 			make install_sw; \
 	fi

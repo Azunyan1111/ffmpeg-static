@@ -15,6 +15,12 @@ RUN apt-get install -y pkg-config
 COPY Makefile .
 COPY srt-port.patch .
 
+# Download sources
+RUN make download-openssl
+RUN make download-x264
+RUN make download-srt
+RUN make download-ffmpeg
+
 # Build OpenSSL
 RUN make build-openssl-3-static
 
