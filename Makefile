@@ -186,6 +186,52 @@ build-ffmpeg: build-x264 build-vpx build-opus build-srt _build-ffmpeg copy-ffmpe
 	./build-ffmpeg/bin/ffmpeg -version
 
 # =============================================================================
+# Experimental: WHIP VP8 patch
+# =============================================================================
+
+.PHONY: _build-ffmpeg-with-whip-vp8
+_build-ffmpeg-with-whip-vp8: download-ffmpeg
+	@if [ -f build-ffmpeg/bin/ffmpeg ]; then \
+		echo "ffmpeg already built, skipping"; \
+	else \
+		mkdir -p build-ffmpeg && \
+		cp -r download/ffmpeg build-ffmpeg/ffmpeg && \
+		cd build-ffmpeg/ffmpeg && patch -p1 < ../../whip-vp8.patch && \
+		export PKG_CONFIG_PATH="$(PKG_CONFIG_PATH_LOCAL)" && \
+		./configure \
+			--prefix=../ffmpeg_install \
+			--pkg-config-flags="--static" \
+			--extra-cflags="-I../srt/install/include -I../$(OPENSSL_SRC)-static/include -I../ffmpeg_install/include" \
+			--extra-ldflags="-L../srt/install/lib -L../$(OPENSSL_SRC)-static/lib -L../ffmpeg_install/lib -lssl -lcrypto" \
+			--extra-libs="-lpthread -lm" \
+			--enable-gpl \
+			--bindir=../bin \
+			--enable-libx264 \
+			--enable-libvpx \
+			--enable-libopus \
+			--enable-nonfree \
+			--enable-openssl \
+			--enable-libsrt \
+			--enable-static \
+			--disable-shared \
+			--disable-debug \
+			--disable-libxcb \
+			--disable-sdl2 \
+			--disable-xlib \
+			--disable-indev=x11grab \
+			--disable-outdev=x11 \
+			--disable-ffprobe \
+			--disable-doc && \
+		make -j$(NPROC) && \
+		make install && \
+		../bin/ffmpeg -version; \
+	fi
+
+.PHONY: build-ffmpeg-with-whip-vp8
+build-ffmpeg-with-whip-vp8: build-x264 build-vpx build-opus build-srt _build-ffmpeg-with-whip-vp8 copy-ffmpeg
+	./build-ffmpeg/bin/ffmpeg -version
+
+# =============================================================================
 # Docker build targets
 # =============================================================================
 

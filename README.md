@@ -123,6 +123,7 @@ Makefileは`download.mk`と`Makefile`に分割されております。ダウン�
 | コマンド | 説明 |
 |----------|------|
 | `make build-ffmpeg` | ffmpegをビルド（ダウンロードも自動実行） |
+| `make build-ffmpeg-with-whip-vp8` | WHIP VP8パッチを適用してffmpegをビルド（実験的） |
 | `make docker-build-linux-arm64` | Docker経由でLinux arm64用をビルド |
 | `make docker-build-linux-amd64` | Docker経由でLinux amd64用をビルド |
 
@@ -153,3 +154,21 @@ Makefileは`download.mk`と`Makefile`に分割されております。ダウン�
 ### srt-port.patch について
 
 本プロジェクトに含まれる `srt-port.patch` は、SRTライブラリ（MPL 2.0）のソースコードを修正するパッチファイルです。このファイルはMPL 2.0ライセンスの影響下にあります。
+
+### whip-vp8.patch について（実験的）
+
+本プロジェクトに含まれる `whip-vp8.patch` は、ffmpeg（LGPL 2.1）のWHIPマルチプレクサにVP8コーデックサポートを追加する実験的なパッチファイルです。このファイルはLGPL 2.1ライセンスの影響下にあります。
+
+このパッチは実験的な機能であり、ffmpeg公式にはマージされておりません。使用は自己責任でお願いいたします。
+
+パッチを適用したビルドを行うには以下のコマンドを使用してください:
+
+```
+make build-ffmpeg-with-whip-vp8
+```
+
+VP8でのWHIP配信例:
+
+```
+ffmpeg -i input.mp4 -c:v libvpx -b:v 1M -c:a libopus -ar 48000 -ac 2 -f whip "https://example.com/whip/endpoint"
+```

@@ -1,0 +1,164 @@
+--- /Users/admin/go/src/github.com/Azunyan1111/ffmpeg-static/download/ffmpeg/libavformat/whip.c	2026-01-21 05:11:17
++++ libavformat/whip.c	2026-01-21 06:31:30
+@@ -113,6 +113,7 @@
+ 
+ /* Referring to Chrome's definition of RTP payload types. */
+ #define WHIP_RTP_PAYLOAD_TYPE_H264 106
++#define WHIP_RTP_PAYLOAD_TYPE_VP8  96
+ #define WHIP_RTP_PAYLOAD_TYPE_OPUS 111
+ 
+ /**
+@@ -525,29 +526,31 @@
+             }
+             whip->video_par = par;
+ 
+-            if (par->codec_id != AV_CODEC_ID_H264) {
+-                av_log(whip, AV_LOG_ERROR, "Unsupported video codec %s by RTC, choose h264\n",
++            if (par->codec_id != AV_CODEC_ID_H264 && par->codec_id != AV_CODEC_ID_VP8) {
++                av_log(whip, AV_LOG_ERROR, "Unsupported video codec %s by RTC, choose h264 or vp8\n",
+                        desc ? desc->name : "unknown");
+                 return AVERROR_PATCHWELCOME;
+             }
+ 
+-            if (par->video_delay > 0) {
++            if (par->codec_id == AV_CODEC_ID_H264 && par->video_delay > 0) {
+                 av_log(whip, AV_LOG_ERROR, "Unsupported B frames by RTC\n");
+                 return AVERROR_PATCHWELCOME;
+             }
+ 
+-            if ((ret = parse_profile_level(s, par)) < 0) {
+-                av_log(whip, AV_LOG_ERROR, "Failed to parse SPS/PPS from extradata\n");
+-                return AVERROR(EINVAL);
+-            }
++            if (par->codec_id == AV_CODEC_ID_H264) {
++                if ((ret = parse_profile_level(s, par)) < 0) {
++                    av_log(whip, AV_LOG_ERROR, "Failed to parse SPS/PPS from extradata\n");
++                    return AVERROR(EINVAL);
++                }
+ 
+-            if (par->profile == AV_PROFILE_UNKNOWN) {
+-                av_log(whip, AV_LOG_WARNING, "No profile found in extradata, consider baseline\n");
+-                return AVERROR(EINVAL);
+-            }
+-            if (par->level == AV_LEVEL_UNKNOWN) {
+-                av_log(whip, AV_LOG_WARNING, "No level found in extradata, consider 3.1\n");
+-                return AVERROR(EINVAL);
++                if (par->profile == AV_PROFILE_UNKNOWN) {
++                    av_log(whip, AV_LOG_WARNING, "No profile found in extradata, consider baseline\n");
++                    return AVERROR(EINVAL);
++                }
++                if (par->level == AV_LEVEL_UNKNOWN) {
++                    av_log(whip, AV_LOG_WARNING, "No level found in extradata, consider 3.1\n");
++                    return AVERROR(EINVAL);
++                }
+             }
+             break;
+         case AVMEDIA_TYPE_AUDIO:
+@@ -618,7 +621,14 @@
+     whip->video_ssrc = av_lfg_get(&whip->rnd);
+ 
+     whip->audio_payload_type = WHIP_RTP_PAYLOAD_TYPE_OPUS;
+-    whip->video_payload_type = WHIP_RTP_PAYLOAD_TYPE_H264;
++    if (whip->video_par) {
++        if (whip->video_par->codec_id == AV_CODEC_ID_VP8)
++            whip->video_payload_type = WHIP_RTP_PAYLOAD_TYPE_VP8;
++        else
++            whip->video_payload_type = WHIP_RTP_PAYLOAD_TYPE_H264;
++    } else {
++        whip->video_payload_type = WHIP_RTP_PAYLOAD_TYPE_H264;
++    }
+ 
+     av_bprintf(&bp, ""
+         "v=0\r\n"
+@@ -668,36 +678,62 @@
+             vcodec_name = "H264";
+             profile_iop &= AV_PROFILE_H264_CONSTRAINED;
+             profile &= (~AV_PROFILE_H264_CONSTRAINED);
+-        }
+ 
+-        av_bprintf(&bp, ""
+-            "m=video 9 UDP/TLS/RTP/SAVPF %u\r\n"
+-            "c=IN IP4 0.0.0.0\r\n"
+-            "a=ice-ufrag:%s\r\n"
+-            "a=ice-pwd:%s\r\n"
+-            "a=fingerprint:sha-256 %s\r\n"
+-            "a=setup:passive\r\n"
+-            "a=mid:1\r\n"
+-            "a=sendonly\r\n"
+-            "a=msid:FFmpeg video\r\n"
+-            "a=rtcp-mux\r\n"
+-            "a=rtcp-rsize\r\n"
+-            "a=rtpmap:%u %s/90000\r\n"
+-            "a=fmtp:%u level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=%02x%02x%02x\r\n"
+-            "a=ssrc:%u cname:FFmpeg\r\n"
+-            "a=ssrc:%u msid:FFmpeg video\r\n",
+-            whip->video_payload_type,
+-            whip->ice_ufrag_local,
+-            whip->ice_pwd_local,
+-            whip->dtls_fingerprint,
+-            whip->video_payload_type,
+-            vcodec_name,
+-            whip->video_payload_type,
+-            profile,
+-            profile_iop,
+-            level,
+-            whip->video_ssrc,
+-            whip->video_ssrc);
++            av_bprintf(&bp, ""
++                "m=video 9 UDP/TLS/RTP/SAVPF %u\r\n"
++                "c=IN IP4 0.0.0.0\r\n"
++                "a=ice-ufrag:%s\r\n"
++                "a=ice-pwd:%s\r\n"
++                "a=fingerprint:sha-256 %s\r\n"
++                "a=setup:passive\r\n"
++                "a=mid:1\r\n"
++                "a=sendonly\r\n"
++                "a=msid:FFmpeg video\r\n"
++                "a=rtcp-mux\r\n"
++                "a=rtcp-rsize\r\n"
++                "a=rtpmap:%u %s/90000\r\n"
++                "a=fmtp:%u level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=%02x%02x%02x\r\n"
++                "a=ssrc:%u cname:FFmpeg\r\n"
++                "a=ssrc:%u msid:FFmpeg video\r\n",
++                whip->video_payload_type,
++                whip->ice_ufrag_local,
++                whip->ice_pwd_local,
++                whip->dtls_fingerprint,
++                whip->video_payload_type,
++                vcodec_name,
++                whip->video_payload_type,
++                profile,
++                profile_iop,
++                level,
++                whip->video_ssrc,
++                whip->video_ssrc);
++        } else if (whip->video_par->codec_id == AV_CODEC_ID_VP8) {
++            vcodec_name = "VP8";
++
++            av_bprintf(&bp, ""
++                "m=video 9 UDP/TLS/RTP/SAVPF %u\r\n"
++                "c=IN IP4 0.0.0.0\r\n"
++                "a=ice-ufrag:%s\r\n"
++                "a=ice-pwd:%s\r\n"
++                "a=fingerprint:sha-256 %s\r\n"
++                "a=setup:passive\r\n"
++                "a=mid:1\r\n"
++                "a=sendonly\r\n"
++                "a=msid:FFmpeg video\r\n"
++                "a=rtcp-mux\r\n"
++                "a=rtcp-rsize\r\n"
++                "a=rtpmap:%u %s/90000\r\n"
++                "a=ssrc:%u cname:FFmpeg\r\n"
++                "a=ssrc:%u msid:FFmpeg video\r\n",
++                whip->video_payload_type,
++                whip->ice_ufrag_local,
++                whip->ice_pwd_local,
++                whip->dtls_fingerprint,
++                whip->video_payload_type,
++                vcodec_name,
++                whip->video_ssrc,
++                whip->video_ssrc);
++        }
+     }
+ 
+     if (!av_bprint_is_complete(&bp)) {
