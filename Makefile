@@ -2,11 +2,13 @@
 # Required: h264 (libx264) and srt support
 
 OPENSSL_VERSION := 3.4.1
+OPUS_VERSION    := 1.6.1
+OPUS_SRC        := opus-$(OPUS_VERSION)
 OPENSSL_SRC     := openssl-$(OPENSSL_VERSION)
-OPENSSL_PREFIX  := $(shell pwd)/build-ffmpeg/$(OPENSSL_SRC)-static
+OPENSSL_PREFIX  := $(CURDIR)/build-ffmpeg/$(OPENSSL_SRC)-static
 
 # pkg-config path for local builds
-PKG_CONFIG_PATH_LOCAL := $(shell pwd)/build-ffmpeg/srt/install/lib/pkgconfig:$(shell pwd)/build-ffmpeg/ffmpeg_install/lib/pkgconfig:$(OPENSSL_PREFIX)/lib/pkgconfig
+PKG_CONFIG_PATH_LOCAL := $(CURDIR)/build-ffmpeg/srt/install/lib/pkgconfig:$(CURDIR)/build-ffmpeg/ffmpeg_install/lib/pkgconfig:$(OPENSSL_PREFIX)/lib/pkgconfig
 
 # OS detection
 UNAME_S := $(shell uname -s)
@@ -40,6 +42,7 @@ clean: clean-build clean-download
 
 .PHONY: clean-build
 clean-build:
+	chmod -R u+w build-ffmpeg 2>/dev/null || true
 	rm -rf build-ffmpeg
 	rm -rf bin
 
@@ -61,7 +64,7 @@ copy-ffmpeg:
 # =============================================================================
 
 .PHONY: download-all
-download-all: download-x264 download-openssl download-srt download-ffmpeg
+download-all: download-x264 download-openssl download-srt download-opus download-ffmpeg
 
 .PHONY: download-x264
 download-x264:
@@ -74,12 +77,11 @@ download-x264:
 
 .PHONY: download-openssl
 download-openssl:
-	@if [ -d download/$(OPENSSL_SRC) ]; then \
+	@if [ -d download/openssl ]; then \
 		echo "OpenSSL already downloaded, skipping"; \
 	else \
 		mkdir -p download && \
-		curl -L -o download/$(OPENSSL_SRC).tar.gz https://github.com/openssl/openssl/releases/download/openssl-$(OPENSSL_VERSION)/$(OPENSSL_SRC).tar.gz && \
-		tar -xf download/$(OPENSSL_SRC).tar.gz -C download; \
+		git clone https://github.com/openssl/openssl.git --branch openssl-$(OPENSSL_VERSION) download/openssl --depth 1; \
 	fi
 
 .PHONY: download-srt
@@ -89,6 +91,15 @@ download-srt:
 	else \
 		mkdir -p download && \
 		git clone https://github.com/Haivision/srt.git --branch v1.5.4 download/srt; \
+	fi
+
+.PHONY: download-opus
+download-opus:
+	@if [ -d download/opus ]; then \
+		echo "opus already downloaded, skipping"; \
+	else \
+		mkdir -p download && \
+		git clone https://gitlab.xiph.org/xiph/opus.git --branch v1.6.1 download/opus --depth 1; \
 	fi
 
 .PHONY: download-ffmpeg
@@ -117,21 +128,35 @@ build-x264: download-x264
 			make install; \
 	fi
 
-.PHONY: build-openssl-3-static
-build-openssl-3-static: download-openssl
+.PHONY: build-openssl
+build-openssl: download-openssl
 	@if [ -f $(OPENSSL_PREFIX)/lib/libssl.a ]; then \
 		echo "OpenSSL already built, skipping"; \
 	else \
 		mkdir -p build-ffmpeg && \
-		cp -r download/$(OPENSSL_SRC) build-ffmpeg/$(OPENSSL_SRC) && \
+		cp -r download/openssl build-ffmpeg/$(OPENSSL_SRC) && \
 		cd build-ffmpeg/$(OPENSSL_SRC) && \
 			./Configure $(OPENSSL_TARGET) no-shared no-dso no-tests --prefix=$(OPENSSL_PREFIX) --libdir=lib && \
 			make -j$(NPROC) && \
 			make install_sw; \
 	fi
 
+.PHONY: build-opus
+build-opus: download-opus
+	@if [ -f build-ffmpeg/ffmpeg_install/lib/libopus.a ]; then \
+		echo "opus already built, skipping"; \
+	else \
+		mkdir -p build-ffmpeg && \
+		cp -r download/opus build-ffmpeg/opus && \
+		cd build-ffmpeg/opus && \
+			./autogen.sh && \
+			./configure --prefix=$(shell pwd)/build-ffmpeg/ffmpeg_install --enable-static --disable-shared --disable-doc --disable-extra-programs && \
+			make -j$(NPROC) && \
+			make install; \
+	fi
+
 .PHONY: build-srt
-build-srt: build-openssl-3-static download-srt
+build-srt: build-openssl download-srt
 	@if [ -f build-ffmpeg/srt/install/lib/libsrt.a ]; then \
 		echo "SRT already built, skipping"; \
 	else \
@@ -158,8 +183,8 @@ build-srt: build-openssl-3-static download-srt
 			make install; \
 	fi
 
-.PHONY: build-ffmpeg-only
-build-ffmpeg-only: download-ffmpeg
+.PHONY: _build-ffmpeg
+_build-ffmpeg: download-ffmpeg
 	@if [ -f build-ffmpeg/bin/ffmpeg ]; then \
 		echo "ffmpeg already built, skipping"; \
 	else \
@@ -170,12 +195,13 @@ build-ffmpeg-only: download-ffmpeg
 			./configure \
 				--prefix=../ffmpeg_install \
 				--pkg-config-flags="--static" \
-				--extra-cflags="-I../srt/install/include -I$(OPENSSL_PREFIX)/include -I../ffmpeg_install/include" \
-				--extra-ldflags="-L../srt/install/lib -L$(OPENSSL_PREFIX)/lib -L../ffmpeg_install/lib -lssl -lcrypto" \
+				--extra-cflags="-I../srt/install/include -I../$(OPENSSL_SRC)-static/include -I../ffmpeg_install/include" \
+				--extra-ldflags="-L../srt/install/lib -L../$(OPENSSL_SRC)-static/lib -L../ffmpeg_install/lib -lssl -lcrypto" \
 				--extra-libs="-lpthread -lm" \
 				--enable-gpl \
 				--bindir=../bin \
 				--enable-libx264 \
+				--enable-libopus \
 				--enable-nonfree \
 				--enable-openssl \
 				--enable-libsrt \
@@ -195,7 +221,7 @@ build-ffmpeg-only: download-ffmpeg
 	fi
 
 .PHONY: build-ffmpeg
-build-ffmpeg: build-x264 build-srt build-ffmpeg-only copy-ffmpeg
+build-ffmpeg: build-x264 build-opus build-srt _build-ffmpeg copy-ffmpeg
 	./build-ffmpeg/bin/ffmpeg -version
 
 # =============================================================================

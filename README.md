@@ -9,6 +9,7 @@ macOSおよびLinux向けに、ffmpegを静的ビルドするためのMakefile�
 ## 含まれる機能
 
 - H.264エンコード（libx264）
+- Opusオーディオエンコード（libopus）
 - SRTプロトコル対応（libsrt）
   - ポート制限を回避するパッチを適用
 
@@ -23,6 +24,7 @@ macOSおよびLinux向けに、ffmpegを静的ビルドするためのMakefile�
 |------------|------------|
 | ffmpeg | n8.0.1 |
 | libx264 | stable |
+| libopus | v1.6.1 |
 | libsrt | v1.5.4 |
 | OpenSSL | 3.4.1 |
 
@@ -32,6 +34,7 @@ macOSおよびLinux向けに、ffmpegを静的ビルドするためのMakefile�
 
 - GPL ライセンス機能
 - libx264（H.264エンコード）
+- libopus（Opusオーディオエンコード）
 - libsrt（SRTプロトコル）
 - OpenSSL（HTTPS/DTLS/WHIP対応）
 - 静的リンク
@@ -89,9 +92,10 @@ make docker-build-linux-amd64
 ffmpeg-static/
   download/          # ダウンロードしたソースコード（再利用可能）
     x264/
+    opus/
+    openssl/
     srt/
     ffmpeg/
-    openssl-3.4.1/
   build-ffmpeg/      # ビルド作業ディレクトリ
   bin/               # 出力バイナリ
     ffmpeg           # macOS用
@@ -118,6 +122,7 @@ ffmpeg-static/
 |----------|------|
 | `make download-all` | 全ソースをダウンロード |
 | `make download-x264` | x264のみダウンロード |
+| `make download-opus` | Opusのみダウンロード |
 | `make download-openssl` | OpenSSLのみダウンロード |
 | `make download-srt` | SRTのみダウンロード |
 | `make download-ffmpeg` | ffmpegのみダウンロード |
@@ -132,7 +137,7 @@ ffmpeg-static/
 
 ## ライセンスに関する注意
 
-本プロジェクトはビルドスクリプトのみを提供しております。ビルド時にダウンロードされる各ライブラリ（ffmpeg、libx264、libsrt、OpenSSL）のライセンスは、ビルドを実行するユーザーに適用されます。生成されたバイナリの利用にあたっては、各ライブラリのライセンス条項をご確認ください。
+本プロジェクトはビルドスクリプトのみを提供しております。ビルド時にダウンロードされる各ライブラリ（ffmpeg、libx264、libopus、libsrt、OpenSSL）のライセンスは、ビルドを実行するユーザーに適用されます。生成されたバイナリの利用にあたっては、各ライブラリのライセンス条項をご確認ください。
 
 ### srt-port.patch について
 
