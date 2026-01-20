@@ -1,9 +1,12 @@
 # ffmpeg static build
-# Required: h264 (libx264) and srt support
+# Required: h264 (libx264), vpx (libvpx), opus (libopus) and srt support
+#
+# Note: Download targets are defined in download.mk
+#       See download.mk for: download-all, download-x264, download-vpx,
+#       download-openssl, download-srt, download-opus, download-ffmpeg
 
-OPENSSL_VERSION := 3.4.1
-OPUS_VERSION    := 1.6.1
-OPUS_SRC        := opus-$(OPUS_VERSION)
+include download.mk
+
 OPENSSL_SRC     := openssl-$(OPENSSL_VERSION)
 OPENSSL_PREFIX  := $(CURDIR)/build-ffmpeg/$(OPENSSL_SRC)-static
 
@@ -42,13 +45,9 @@ clean: clean-build clean-download
 
 .PHONY: clean-build
 clean-build:
-	chmod -R u+w build-ffmpeg 2>/dev/null || true
+	chmod -R u+rwx build-ffmpeg 2>/dev/null || true
 	rm -rf build-ffmpeg
 	rm -rf bin
-
-.PHONY: clean-download
-clean-download:
-	rm -rf download
 
 .PHONY: copy-ffmpeg
 copy-ffmpeg:
@@ -57,58 +56,6 @@ copy-ffmpeg:
 		cp ./build-ffmpeg/bin/ffmpeg bin/ffmpeg; \
 	else \
 		echo "bin/ffmpeg already exists, skipping copy"; \
-	fi
-
-# =============================================================================
-# Download targets
-# =============================================================================
-
-.PHONY: download-all
-download-all: download-x264 download-openssl download-srt download-opus download-ffmpeg
-
-.PHONY: download-x264
-download-x264:
-	@if [ -d download/x264 ]; then \
-		echo "x264 already downloaded, skipping"; \
-	else \
-		mkdir -p download && \
-		git clone https://code.videolan.org/videolan/x264.git --branch stable download/x264; \
-	fi
-
-.PHONY: download-openssl
-download-openssl:
-	@if [ -d download/openssl ]; then \
-		echo "OpenSSL already downloaded, skipping"; \
-	else \
-		mkdir -p download && \
-		git clone https://github.com/openssl/openssl.git --branch openssl-$(OPENSSL_VERSION) download/openssl --depth 1; \
-	fi
-
-.PHONY: download-srt
-download-srt:
-	@if [ -d download/srt ]; then \
-		echo "SRT already downloaded, skipping"; \
-	else \
-		mkdir -p download && \
-		git clone https://github.com/Haivision/srt.git --branch v1.5.4 download/srt; \
-	fi
-
-.PHONY: download-opus
-download-opus:
-	@if [ -d download/opus ]; then \
-		echo "opus already downloaded, skipping"; \
-	else \
-		mkdir -p download && \
-		git clone https://gitlab.xiph.org/xiph/opus.git --branch v1.6.1 download/opus --depth 1; \
-	fi
-
-.PHONY: download-ffmpeg
-download-ffmpeg:
-	@if [ -d download/ffmpeg ]; then \
-		echo "ffmpeg already downloaded, skipping"; \
-	else \
-		mkdir -p download && \
-		git clone https://git.ffmpeg.org/ffmpeg.git --branch n8.0.1 download/ffmpeg --depth 1; \
 	fi
 
 # =============================================================================
@@ -124,6 +71,19 @@ build-x264: download-x264
 		cp -r download/x264 build-ffmpeg/x264 && \
 		cd build-ffmpeg/x264 && \
 			./configure --prefix=../ffmpeg_install --enable-static && \
+			make -j$(NPROC) && \
+			make install; \
+	fi
+
+.PHONY: build-vpx
+build-vpx: download-vpx
+	@if [ -f build-ffmpeg/ffmpeg_install/lib/libvpx.a ]; then \
+		echo "libvpx already built, skipping"; \
+	else \
+		mkdir -p build-ffmpeg && \
+		cp -r download/libvpx build-ffmpeg/libvpx && \
+		cd build-ffmpeg/libvpx && \
+			./configure --prefix=../ffmpeg_install --disable-shared --enable-static --disable-examples --disable-tools --disable-docs --disable-unit-tests && \
 			make -j$(NPROC) && \
 			make install; \
 	fi
@@ -201,6 +161,7 @@ _build-ffmpeg: download-ffmpeg
 				--enable-gpl \
 				--bindir=../bin \
 				--enable-libx264 \
+				--enable-libvpx \
 				--enable-libopus \
 				--enable-nonfree \
 				--enable-openssl \
@@ -221,7 +182,7 @@ _build-ffmpeg: download-ffmpeg
 	fi
 
 .PHONY: build-ffmpeg
-build-ffmpeg: build-x264 build-opus build-srt _build-ffmpeg copy-ffmpeg
+build-ffmpeg: build-x264 build-vpx build-opus build-srt _build-ffmpeg copy-ffmpeg
 	./build-ffmpeg/bin/ffmpeg -version
 
 # =============================================================================

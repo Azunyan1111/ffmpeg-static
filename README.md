@@ -9,6 +9,7 @@ macOSおよびLinux向けに、ffmpegを静的ビルドするためのMakefile�
 ## 含まれる機能
 
 - H.264エンコード（libx264）
+- VP8/VP9エンコード（libvpx）
 - Opusオーディオエンコード（libopus）
 - SRTプロトコル対応（libsrt）
   - ポート制限を回避するパッチを適用
@@ -24,6 +25,7 @@ macOSおよびLinux向けに、ffmpegを静的ビルドするためのMakefile�
 |------------|------------|
 | ffmpeg | n8.0.1 |
 | libx264 | stable |
+| libvpx | v1.15.2 |
 | libopus | v1.6.1 |
 | libsrt | v1.5.4 |
 | OpenSSL | 3.4.1 |
@@ -34,6 +36,7 @@ macOSおよびLinux向けに、ffmpegを静的ビルドするためのMakefile�
 
 - GPL ライセンス機能
 - libx264（H.264エンコード）
+- libvpx（VP8/VP9エンコード）
 - libopus（Opusオーディオエンコード）
 - libsrt（SRTプロトコル）
 - OpenSSL（HTTPS/DTLS/WHIP対応）
@@ -86,12 +89,17 @@ make docker-build-linux-amd64
 
 ビルドされたバイナリは `bin/linux/arm64/ffmpeg` または `bin/linux/amd64/ffmpeg` に出力されます。
 
-## ディレクトリ構成
+## ファイル構成
 
 ```
 ffmpeg-static/
+  Makefile           # ビルドターゲット定義
+  download.mk        # ダウンロードターゲット定義（Makefileからinclude）
+  srt-port.patch     # SRTのポート制限回避パッチ
+  Dockerfile         # Linux向けDockerビルド
   download/          # ダウンロードしたソースコード（再利用可能）
     x264/
+    libvpx/
     opus/
     openssl/
     srt/
@@ -106,6 +114,8 @@ ffmpeg-static/
 
 ダウンロードとビルドを分離することで、ビルドをやり直す際にソースの再ダウンロードが不要になり、外部サーバーへの負荷を軽減できます。
 
+Makefileは`download.mk`と`Makefile`に分割されております。ダウンロード関連のターゲットは`download.mk`に定義されており、Dockerビルド時のキャッシュ効率を向上させております。
+
 ## コマンド一覧
 
 ### ビルド
@@ -116,12 +126,13 @@ ffmpeg-static/
 | `make docker-build-linux-arm64` | Docker経由でLinux arm64用をビルド |
 | `make docker-build-linux-amd64` | Docker経由でLinux amd64用をビルド |
 
-### ダウンロード
+### ダウンロード（download.mkで定義）
 
 | コマンド | 説明 |
 |----------|------|
 | `make download-all` | 全ソースをダウンロード |
 | `make download-x264` | x264のみダウンロード |
+| `make download-vpx` | libvpxのみダウンロード |
 | `make download-opus` | Opusのみダウンロード |
 | `make download-openssl` | OpenSSLのみダウンロード |
 | `make download-srt` | SRTのみダウンロード |
@@ -137,7 +148,7 @@ ffmpeg-static/
 
 ## ライセンスに関する注意
 
-本プロジェクトはビルドスクリプトのみを提供しております。ビルド時にダウンロードされる各ライブラリ（ffmpeg、libx264、libopus、libsrt、OpenSSL）のライセンスは、ビルドを実行するユーザーに適用されます。生成されたバイナリの利用にあたっては、各ライブラリのライセンス条項をご確認ください。
+本プロジェクトはビルドスクリプトのみを提供しております。ビルド時にダウンロードされる各ライブラリ（ffmpeg、libx264、libvpx、libopus、libsrt、OpenSSL）のライセンスは、ビルドを実行するユーザーに適用されます。生成されたバイナリの利用にあたっては、各ライブラリのライセンス条項をご確認ください。
 
 ### srt-port.patch について
 

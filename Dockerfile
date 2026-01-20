@@ -14,22 +14,29 @@ RUN apt-get install -y autoconf
 RUN apt-get install -y automake
 RUN apt-get install -y libtool
 
-# Copy build files
-COPY Makefile .
-COPY srt-port.patch .
+# Copy download.mk first (changes less frequently)
+COPY download.mk .
 
 # Download sources
-RUN make download-openssl
-RUN make download-x264
-RUN make download-srt
-RUN make download-opus
-RUN make download-ffmpeg
+RUN make -f download.mk download-openssl
+RUN make -f download.mk download-x264
+RUN make -f download.mk download-vpx
+RUN make -f download.mk download-srt
+RUN make -f download.mk download-opus
+RUN make -f download.mk download-ffmpeg
+
+# Copy build files (changes more frequently)
+COPY Makefile .
+COPY srt-port.patch .
 
 # Build OpenSSL
 RUN make build-openssl
 
 # Build x264
 RUN make build-x264
+
+# Build libvpx
+RUN make build-vpx
 
 # Build SRT
 RUN make build-srt
