@@ -1,9 +1,8 @@
 # Build directories
 build-ffmpeg/
 
-# OpenSSL source and archive
-openssl-*/
-openssl-*.tar.gz
+# Download directories
+download/
 
 # Output binary
 bin/
