@@ -1,0 +1,52 @@
+FROM ubuntu:24.04
+
+WORKDIR /build
+
+# Base packages
+RUN apt-get update
+RUN apt-get install -y git
+RUN apt-get install -y curl
+RUN apt-get install -y build-essential
+RUN apt-get install -y nasm
+RUN apt-get install -y cmake
+RUN apt-get install -y pkg-config
+RUN apt-get install -y autoconf
+RUN apt-get install -y automake
+RUN apt-get install -y libtool
+
+# Copy download.mk first (changes less frequently)
+COPY download.mk .
+
+# Download sources
+RUN make -f download.mk download-openssl
+RUN make -f download.mk download-x264
+RUN make -f download.mk download-vpx
+RUN make -f download.mk download-srt
+RUN make -f download.mk download-opus
+RUN make -f download.mk download-ffmpeg
+
+# Copy build files (changes more frequently)
+COPY Makefile .
+COPY srt-port.patch .
+COPY whip-vp8.patch .
+
+# Build OpenSSL
+RUN make build-openssl
+
+# Build x264
+RUN make build-x264
+
+# Build libvpx
+RUN make build-vpx
+
+# Build SRT
+RUN make build-srt
+
+# Build Opus
+RUN make build-opus
+
+# Build ffmpeg with WHIP VP8 patch (experimental)
+RUN make _build-ffmpeg-with-whip-vp8
+
+# Copy binary to output directory
+RUN make copy-ffmpeg

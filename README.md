@@ -126,6 +126,8 @@ Makefileは`download.mk`と`Makefile`に分割されております。ダウン�
 | `make build-ffmpeg-with-whip-vp8` | WHIP VP8パッチを適用してffmpegをビルド（実験的） |
 | `make docker-build-linux-arm64` | Docker経由でLinux arm64用をビルド |
 | `make docker-build-linux-amd64` | Docker経由でLinux amd64用をビルド |
+| `make docker-build-linux-arm64-with-whip-vp8` | Docker経由でWHIP VP8パッチ適用版をビルド（arm64、実験的） |
+| `make docker-build-linux-amd64-with-whip-vp8` | Docker経由でWHIP VP8パッチ適用版をビルド（amd64、実験的） |
 
 ### ダウンロード（download.mkで定義）
 

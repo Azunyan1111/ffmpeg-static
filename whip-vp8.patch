@@ -1,5 +1,5 @@
---- /Users/admin/go/src/github.com/Azunyan1111/ffmpeg-static/download/ffmpeg/libavformat/whip.c	2026-01-21 05:11:17
-+++ libavformat/whip.c	2026-01-21 06:31:30
+--- a/libavformat/whip.c
++++ b/libavformat/whip.c
 @@ -113,6 +113,7 @@
  
  /* Referring to Chrome's definition of RTP payload types. */

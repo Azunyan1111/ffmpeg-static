@@ -250,3 +250,23 @@ docker-build-linux-amd64:
 	docker create --name ffmpeg-tmp-amd64 ffmpeg-static-amd64
 	docker cp ffmpeg-tmp-amd64:/build/bin/ffmpeg bin/linux/amd64/ffmpeg
 	docker rm ffmpeg-tmp-amd64
+
+# =============================================================================
+# Docker build targets (with WHIP VP8 patch, experimental)
+# =============================================================================
+
+.PHONY: docker-build-linux-arm64-with-whip-vp8
+docker-build-linux-arm64-with-whip-vp8:
+	docker build --platform linux/arm64 -t ffmpeg-static-whip-vp8-arm64 -f Dockerfile.whip-vp8 .
+	mkdir -p bin/linux/arm64
+	docker create --name ffmpeg-tmp-whip-vp8-arm64 ffmpeg-static-whip-vp8-arm64
+	docker cp ffmpeg-tmp-whip-vp8-arm64:/build/bin/ffmpeg bin/linux/arm64/ffmpeg
+	docker rm ffmpeg-tmp-whip-vp8-arm64
+
+.PHONY: docker-build-linux-amd64-with-whip-vp8
+docker-build-linux-amd64-with-whip-vp8:
+	docker build --platform linux/amd64 -t ffmpeg-static-whip-vp8-amd64 -f Dockerfile.whip-vp8 .
+	mkdir -p bin/linux/amd64
+	docker create --name ffmpeg-tmp-whip-vp8-amd64 ffmpeg-static-whip-vp8-amd64
+	docker cp ffmpeg-tmp-whip-vp8-amd64:/build/bin/ffmpeg bin/linux/amd64/ffmpeg
+	docker rm ffmpeg-tmp-whip-vp8-amd64
