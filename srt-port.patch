@@ -1,0 +1,67 @@
+diff --git a/apps/transmitmedia.cpp b/apps/transmitmedia.cpp
+index 862875fa..95e808ea 100644
+--- a/apps/transmitmedia.cpp
++++ b/apps/transmitmedia.cpp
+@@ -1206,8 +1206,8 @@ extern unique_ptr<Base> CreateMedium(const string& uri)
+         iport = atoi(u.port().c_str());
+         if ( iport < 1024 )
+         {
+-            cerr << "Port value invalid: " << iport << " - must be >=1024\n";
+-            throw invalid_argument("Invalid port number");
++            cerr << "WARNING: Port " << iport << " is a privileged port. Root/admin rights may be required.\n";
++            // throw invalid_argument("Invalid port number");
+         }
+         ptr.reset( CreateSrt<Base>(u.host(), iport, u.parameters()) );
+         break;
+@@ -1217,8 +1217,8 @@ extern unique_ptr<Base> CreateMedium(const string& uri)
+         iport = atoi(u.port().c_str());
+         if ( iport < 1024 )
+         {
+-            cerr << "Port value invalid: " << iport << " - must be >=1024\n";
+-            throw invalid_argument("Invalid port number");
++            cerr << "WARNING: Port " << iport << " is a privileged port. Root/admin rights may be required.\n";
++            // throw invalid_argument("Invalid port number");
+         }
+         ptr.reset( CreateUdp<Base>(u.host(), iport, u.parameters()) );
+         break;
+@@ -1232,8 +1232,8 @@ extern unique_ptr<Base> CreateMedium(const string& uri)
+         iport = atoi(u.port().c_str());
+         if ( iport < 1024 )
+         {
+-            cerr << "Port value invalid: " << iport << " - must be >=1024\n";
+-            throw invalid_argument("Invalid port number");
++            cerr << "WARNING: Port " << iport << " is a privileged port. Root/admin rights may be required.\n";
++            // throw invalid_argument("Invalid port number");
+         }
+         ptr.reset( CreateRtp<Base>(u.host(), iport, u.parameters()) );
+         break;
+diff --git a/testing/srt-test-multiplex.cpp b/testing/srt-test-multiplex.cpp
+index 857557a5..abb82478 100644
+--- a/testing/srt-test-multiplex.cpp
++++ b/testing/srt-test-multiplex.cpp
+@@ -585,8 +585,8 @@ int main( int argc, char** argv )
+     int iport = atoi(up.port().c_str());
+     if ( iport < 1024 )
+     {
+-        cerr << "Port value invalid: " << iport << " - must be >=1024\n";
+-        return 1;
++        cerr << "WARNING: Port " << iport << " is a privileged port. Root/admin rights may be required.\n";
++        // return 1;
+     }
+ 
+     SrtModel m(up.host(), iport, up.parameters());
+diff --git a/testing/testmedia.cpp b/testing/testmedia.cpp
+index 2c36a4d1..d40364d3 100755
+--- a/testing/testmedia.cpp
++++ b/testing/testmedia.cpp
+@@ -3039,8 +3039,8 @@ extern unique_ptr<Base> CreateMedium(const string& uri)
+         iport = atoi(u.port().c_str());
+         if (iport < 1024)
+         {
+-            cerr << "Port value invalid: " << iport << " - must be >=1024\n";
+-            throw invalid_argument("Invalid port number");
++            cerr << "WARNING: Port " << iport << " is a privileged port. Root/admin rights may be required.\n";
++            // throw invalid_argument("Invalid port number");
+         }
+         ptr.reset( CreateUdp<Base>(u.host(), iport, u.parameters()) );
+         break;

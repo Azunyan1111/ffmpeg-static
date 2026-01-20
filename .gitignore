@@ -1,0 +1,12 @@
+# Build directories
+build-ffmpeg/
+
+# OpenSSL source and archive
+openssl-*/
+openssl-*.tar.gz
+
+# Output binary
+bin/
+
+# macOS
+.DS_Store
