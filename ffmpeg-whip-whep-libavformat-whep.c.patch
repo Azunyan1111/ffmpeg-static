@@ -1,0 +1,21 @@
+diff --git a/libavformat/whep.c b/libavformat/whep.c
+index 0ba1515..3ef4c51 100644
+--- a/libavformat/whep.c
++++ b/libavformat/whep.c
+@@ -355,7 +355,7 @@ redo:
+ 
+     if (RTP_PT_IS_RTCP(msg->data[1])) {
+         switch(msg->data[1]) {
+-        case RTCP_SR:
++        case RTCP_SR: {
+             uint32_t ssrc = (msg->data[4] << 24) | (msg->data[5] << 16) | (msg->data[6] << 8) | msg->data[7];
+             for (int i = 0; i < whep->rtp_ctxs_count; i++) {
+                 if (whep->rtp_ctxs[i]->ssrc == ssrc) {
+@@ -374,6 +374,7 @@ redo:
+                 av_free(dyn_buf);
+             }
+             break;
++        }
+         default:
+             goto redo;
+         }

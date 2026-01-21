@@ -143,6 +143,32 @@ build-srt: build-openssl download-srt
 			make install; \
 	fi
 
+.PHONY: build-libdatachannel
+build-libdatachannel: build-openssl download-libdatachannel
+	@if [ -f build-ffmpeg/libdatachannel/install/lib/libdatachannel.a ]; then \
+		echo "libdatachannel already built, skipping"; \
+	else \
+		mkdir -p build-ffmpeg && \
+		cp -r download/libdatachannel build-ffmpeg/libdatachannel && \
+		cd build-ffmpeg/libdatachannel && \
+		cmake -B build \
+			-DCMAKE_BUILD_TYPE=Release \
+			-DBUILD_SHARED_LIBS=OFF \
+			-DUSE_GNUTLS=OFF \
+			-DUSE_NICE=OFF \
+			-DNO_WEBSOCKET=ON \
+			-DNO_EXAMPLES=ON \
+			-DNO_TESTS=ON \
+			-DOPENSSL_USE_STATIC_LIBS=TRUE \
+			-DOPENSSL_ROOT_DIR=$(OPENSSL_PREFIX) \
+			-DOPENSSL_INCLUDE_DIR=$(OPENSSL_PREFIX)/include \
+			-DOPENSSL_CRYPTO_LIBRARY=$(OPENSSL_PREFIX)/lib/libcrypto.a \
+			-DOPENSSL_SSL_LIBRARY=$(OPENSSL_PREFIX)/lib/libssl.a \
+			-DCMAKE_INSTALL_PREFIX=install && \
+		cmake --build build -j$(NPROC) && \
+		cmake --install build; \
+	fi
+
 .PHONY: _build-ffmpeg
 _build-ffmpeg: download-ffmpeg
 	@if [ -f build-ffmpeg/bin/ffmpeg ]; then \
@@ -232,6 +258,66 @@ build-ffmpeg-with-whip-vp8: build-x264 build-vpx build-opus build-srt _build-ffm
 	./build-ffmpeg/bin/ffmpeg -version
 
 # =============================================================================
+# FFmpeg-WHIP-WHEP (with libdatachannel)
+# =============================================================================
+
+LIBDATACHANNEL_PREFIX := $(CURDIR)/build-ffmpeg/libdatachannel/install
+
+.PHONY: _build-ffmpeg-with-whip-whep
+_build-ffmpeg-with-whip-whep: download-ffmpeg-whip-whep
+	@if [ -f build-ffmpeg/bin-whip-whep/ffmpeg ]; then \
+		echo "ffmpeg-whip-whep already built, skipping"; \
+	else \
+		mkdir -p build-ffmpeg && \
+		cp -r download/ffmpeg-whip-whep build-ffmpeg/ffmpeg-whip-whep && \
+		cd build-ffmpeg/ffmpeg-whip-whep && \
+		patch -N -p1 < ../../ffmpeg-whip-whep-libavformat-whep.c.patch || true && \
+		export PKG_CONFIG_PATH="$(PKG_CONFIG_PATH_LOCAL)" && \
+		./configure \
+			--prefix=../ffmpeg_install_whip_whep \
+			--pkg-config-flags="--static" \
+			--extra-cflags="-I../srt/install/include -I../$(OPENSSL_SRC)-static/include -I../ffmpeg_install/include -I../libdatachannel/install/include" \
+			--extra-ldflags="-L../srt/install/lib -L../$(OPENSSL_SRC)-static/lib -L../ffmpeg_install/lib -L../libdatachannel/install/lib" \
+			--extra-libs="-ldatachannel -ljuice -lsrtp2 -lusrsctp -lssl -lcrypto -lpthread -lm -lstdc++" \
+			--ld="g++" \
+			--enable-gpl \
+			--bindir=../bin-whip-whep \
+			--enable-libx264 \
+			--enable-libvpx \
+			--enable-libopus \
+			--enable-nonfree \
+			--enable-openssl \
+			--enable-libsrt \
+			--enable-libdatachannel \
+			--enable-static \
+			--disable-shared \
+			--disable-debug \
+			--disable-libxcb \
+			--disable-sdl2 \
+			--disable-xlib \
+			--disable-indev=x11grab \
+			--disable-outdev=x11 \
+			--disable-ffprobe \
+			--disable-doc && \
+		make -j$(NPROC) && \
+		make install && \
+		../bin-whip-whep/ffmpeg -version; \
+	fi
+
+.PHONY: copy-ffmpeg-whip-whep
+copy-ffmpeg-whip-whep:
+	@if [ ! -f bin/ffmpeg-whip-whep/ffmpeg ]; then \
+		mkdir -p bin/ffmpeg-whip-whep && \
+		cp ./build-ffmpeg/bin-whip-whep/ffmpeg bin/ffmpeg-whip-whep/ffmpeg; \
+	else \
+		echo "bin/ffmpeg-whip-whep/ffmpeg already exists, skipping copy"; \
+	fi
+
+.PHONY: build-ffmpeg-with-whip-whep
+build-ffmpeg-with-whip-whep: build-x264 build-vpx build-opus build-srt build-libdatachannel _build-ffmpeg-with-whip-whep copy-ffmpeg-whip-whep
+	./build-ffmpeg/bin-whip-whep/ffmpeg -version
+
+# =============================================================================
 # Docker build targets
 # =============================================================================
 
@@ -270,3 +356,23 @@ docker-build-linux-amd64-with-whip-vp8:
 	docker create --name ffmpeg-tmp-whip-vp8-amd64 ffmpeg-static-whip-vp8-amd64
 	docker cp ffmpeg-tmp-whip-vp8-amd64:/build/bin/ffmpeg bin/linux/amd64/ffmpeg
 	docker rm ffmpeg-tmp-whip-vp8-amd64
+
+# =============================================================================
+# Docker build targets (with WHIP/WHEP support)
+# =============================================================================
+
+.PHONY: docker-build-linux-arm64-with-whip-whep
+docker-build-linux-arm64-with-whip-whep:
+	docker build --platform linux/arm64 -t ffmpeg-static-whip-whep-arm64 -f Dockerfile.whip-whep .
+	mkdir -p bin/ffmpeg-whip-whep/linux/arm64
+	docker create --name ffmpeg-tmp-whip-whep-arm64 ffmpeg-static-whip-whep-arm64
+	docker cp ffmpeg-tmp-whip-whep-arm64:/build/build-ffmpeg/bin-whip-whep/ffmpeg bin/ffmpeg-whip-whep/linux/arm64/ffmpeg
+	docker rm ffmpeg-tmp-whip-whep-arm64
+
+.PHONY: docker-build-linux-amd64-with-whip-whep
+docker-build-linux-amd64-with-whip-whep:
+	docker build --platform linux/amd64 -t ffmpeg-static-whip-whep-amd64 -f Dockerfile.whip-whep .
+	mkdir -p bin/ffmpeg-whip-whep/linux/amd64
+	docker create --name ffmpeg-tmp-whip-whep-amd64 ffmpeg-static-whip-whep-amd64
+	docker cp ffmpeg-tmp-whip-whep-amd64:/build/build-ffmpeg/bin-whip-whep/ffmpeg bin/ffmpeg-whip-whep/linux/amd64/ffmpeg
+	docker rm ffmpeg-tmp-whip-whep-amd64

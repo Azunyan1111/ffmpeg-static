@@ -1,9 +1,11 @@
 # Download targets for ffmpeg static build
 
 OPENSSL_VERSION := 3.4.1
+LIBDATACHANNEL_VERSION := v0.24.1
+FFMPEG_WHIP_WHEP_VERSION := whip-whep/7.1.1
 
 .PHONY: download-all
-download-all: download-x264 download-vpx download-openssl download-srt download-opus download-ffmpeg
+download-all: download-x264 download-vpx download-openssl download-srt download-opus download-ffmpeg download-libdatachannel
 
 .PHONY: download-x264
 download-x264:
@@ -57,6 +59,24 @@ download-ffmpeg:
 	else \
 		mkdir -p download && \
 		git clone https://git.ffmpeg.org/ffmpeg.git --branch n8.0.1 download/ffmpeg --depth 1; \
+	fi
+
+.PHONY: download-libdatachannel
+download-libdatachannel:
+	@if [ -d download/libdatachannel ]; then \
+		echo "libdatachannel already downloaded, skipping"; \
+	else \
+		mkdir -p download && \
+		git clone https://github.com/paullouisageneau/libdatachannel.git --branch $(LIBDATACHANNEL_VERSION) download/libdatachannel --recursive --depth 1; \
+	fi
+
+.PHONY: download-ffmpeg-whip-whep
+download-ffmpeg-whip-whep:
+	@if [ -d download/ffmpeg-whip-whep ]; then \
+		echo "ffmpeg-whip-whep already downloaded, skipping"; \
+	else \
+		mkdir -p download && \
+		git clone https://github.com/parallelcc/FFmpeg-WHIP-WHEP.git --branch $(FFMPEG_WHIP_WHEP_VERSION) download/ffmpeg-whip-whep --depth 1; \
 	fi
 
 .PHONY: clean-download

@@ -21,14 +21,16 @@ macOSおよびLinux向けに、ffmpegを静的ビルドするためのMakefile�
 
 ## ライブラリバージョン
 
-| ライブラリ | バージョン |
-|------------|------------|
-| ffmpeg | n8.0.1 |
-| libx264 | stable |
-| libvpx | v1.15.2 |
-| libopus | v1.6.1 |
-| libsrt | v1.5.4 |
-| OpenSSL | 3.4.1 |
+| ライブラリ | バージョン | リポジトリ |
+|------------|------------|------------|
+| ffmpeg | n8.0.1 | https://git.ffmpeg.org/ffmpeg.git |
+| FFmpeg-WHIP-WHEP | whip-whep/7.1.1（WHIP/WHEP版のみ） | https://github.com/parallelcc/FFmpeg-WHIP-WHEP.git |
+| libx264 | stable | https://code.videolan.org/videolan/x264.git |
+| libvpx | v1.15.2 | https://chromium.googlesource.com/webm/libvpx |
+| libopus | v1.6.1 | https://gitlab.xiph.org/xiph/opus.git |
+| libsrt | v1.5.4 | https://github.com/Haivision/srt.git |
+| OpenSSL | openssl-3.4.1 | https://github.com/openssl/openssl.git |
+| libdatachannel | v0.24.1（WHIP/WHEP版のみ） | https://github.com/paullouisageneau/libdatachannel.git |
 
 ## ビルドされるffmpegの機能
 
@@ -97,6 +99,8 @@ ffmpeg-static/
   download.mk        # ダウンロードターゲット定義（Makefileからinclude）
   srt-port.patch     # SRTのポート制限回避パッチ
   Dockerfile         # Linux向けDockerビルド
+  Dockerfile.whip-vp8    # WHIP VP8パッチ適用版Dockerビルド
+  Dockerfile.whip-whep   # WHIP/WHEPサポート版Dockerビルド
   download/          # ダウンロードしたソースコード（再利用可能）
     x264/
     libvpx/
@@ -110,6 +114,11 @@ ffmpeg-static/
     linux/
       arm64/ffmpeg   # Linux arm64用
       amd64/ffmpeg   # Linux amd64用
+    ffmpeg-whip-whep/  # WHIP/WHEPサポート版
+      ffmpeg           # macOS用
+      linux/
+        arm64/ffmpeg   # Linux arm64用
+        amd64/ffmpeg   # Linux amd64用
 ```
 
 ダウンロードとビルドを分離することで、ビルドをやり直す際にソースの再ダウンロードが不要になり、外部サーバーへの負荷を軽減できます。
@@ -128,6 +137,9 @@ Makefileは`download.mk`と`Makefile`に分割されております。ダウン�
 | `make docker-build-linux-amd64` | Docker経由でLinux amd64用をビルド |
 | `make docker-build-linux-arm64-with-whip-vp8` | Docker経由でWHIP VP8パッチ適用版をビルド（arm64、実験的） |
 | `make docker-build-linux-amd64-with-whip-vp8` | Docker経由でWHIP VP8パッチ適用版をビルド（amd64、実験的） |
+| `make build-ffmpeg-with-whip-whep` | WHIP/WHEPサポート版ffmpegをビルド（実験的） |
+| `make docker-build-linux-arm64-with-whip-whep` | Docker経由でWHIP/WHEPサポート版をビルド（arm64、実験的） |
+| `make docker-build-linux-amd64-with-whip-whep` | Docker経由でWHIP/WHEPサポート版をビルド（amd64、実験的） |
 
 ### ダウンロード（download.mkで定義）
 
@@ -173,4 +185,30 @@ VP8でのWHIP配信例:
 
 ```
 ffmpeg -i input.mp4 -c:v libvpx -b:v 1M -c:a libopus -ar 48000 -ac 2 -f whip "https://example.com/whip/endpoint"
+```
+
+### ffmpeg-whip-whep について（実験的）
+
+[FFmpeg-WHIP-WHEP](https://github.com/parallelcc/FFmpeg-WHIP-WHEP)をベースにしたWHIP/WHEPサポート版ffmpegをビルドできます。この版はWHIPによるWebRTC配信に加え、WHEPによるWebRTC受信にも対応しております。
+
+本機能は実験的であり、使用は自己責任でお願いいたします。
+
+ビルドコマンド:
+
+```
+make build-ffmpeg-with-whip-whep
+```
+
+ビルドされたバイナリは `bin/ffmpeg-whip-whep/ffmpeg` に出力されます。
+
+WHIP配信例:
+
+```
+ffmpeg -i input.mp4 -c:v libx264 -c:a libopus -f whip "https://example.com/whip/endpoint"
+```
+
+WHEP受信例:
+
+```
+ffmpeg -i "whep://example.com/whep/endpoint" -c:v copy -c:a copy output.mp4
 ```
